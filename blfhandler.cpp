@@ -29,6 +29,8 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
     uint32_t pos;
     BLF_CAN_OBJ canObject;
     BLF_CAN_OBJ2 canObject2;
+    BLF_CANFD_OBJ canFdObject;
+    BLF_CANFD64_OBJ canFd64Object;
 
     QFile *inFile = new QFile(filename);
 
@@ -43,6 +45,10 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
         qDebug() << "Proper BLF file header token";
     }
     else return false;
+
+    qDebug() << "Header size" << header.headerSize;
+    qDebug() << "File size" << header.fileSize;
+    qDebug() << "Uncompressed size" << header.uncompressedFileSize;
 
     while (!inFile->atEnd())
     {
@@ -143,13 +149,66 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
                             frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
                             frames->append(frame);
                         }
+                        else if (obj.header.base.objType == BLF_CAN_FD_MSG) {
+                            qDebug() << "Got BLF_CAN_FD_MSG";
+                            memcpy(&canFdObject, fileData.constData(), sizeof(BLF_CANFD_OBJ));
+                            CANFrame frame;
+                            frame.bus = canFdObject.channel;
+                            frame.setExtendedFrameFormat((canFdObject.id & 0x80000000ull)?true:false);
+                            frame.setFrameId(canFdObject.id & 0x1FFFFFFFull);
+                            frame.isReceived = true;
+                            QByteArray bytes(canFdObject.dlc, 0);
+
+                            if (canFdObject.flags & BLF_REMOTE_FLAG) {
+                                frame.setFrameType(QCanBusFrame::RemoteRequestFrame);
+                            } else {
+                                frame.setFrameType(QCanBusFrame::DataFrame);
+                                for (int i = 0; i < canFdObject.dlc; i++) bytes[i] = canFdObject.data[i];
+                            }
+                            frame.setPayload(bytes);
+                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+                            frames->append(frame);
+                        }
+                        else if(obj.header.base.objType == BLF_CAN_FD_MSG64) {
+
+                            //qDebug() << "Got BLF_CAN_FD_MSG64. Pos: " << pos << ", size: " << obj.header.base.objSize;
+                            memcpy(&canFd64Object, fileData.constData(), sizeof(BLF_CANFD64_OBJ));
+                            CANFrame frame;
+                            frame.bus = canFd64Object.channel;
+                            frame.setExtendedFrameFormat((canFd64Object.id & 0x80000000ull)?true:false);
+                            frame.setFrameId(canFd64Object.id & 0x1FFFFFFFull);
+                            frame.isReceived = true;
+
+
+                            uint8_t msgDlc = canFd64Object.getDlc();
+                            QByteArray bytes(msgDlc, 0);
+                            if (canFd64Object.fdFlags & BLF_REMOTE_FLAG && false /* TODO: change this! */) {
+                                frame.setFrameType(QCanBusFrame::RemoteRequestFrame);
+                            } else {
+                                frame.setFrameType(QCanBusFrame::DataFrame);
+                                bytes = fileData.mid(sizeof(BLF_CANFD64_OBJ), msgDlc);
+                            }
+                            frame.setPayload(bytes);
+                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+                            frames->append(frame);
+                        }
+                        else if (obj.header.base.objType == BLF_APP_TEXT) {
+                            qDebug() << "Got BLF_APP_TEXT";
+                        }
                         else
                         {
-                            qDebug() << "Not a can frame! ObjType: " << obj.header.base.objType;
                             if (obj.header.base.objType > 0xFFFF)
                                 return false;
                         }
-                        pos += obj.header.base.objSize + (obj.header.base.objSize % 4);
+
+                        pos += obj.header.base.objSize;
+                        uint32_t newPos = pos;
+                        while (((newPos - pos) <= (obj.header.base.objSize % 4)) && uncompressedData.mid(newPos, 4) != "LOBJ") {
+                            newPos++;
+                        }
+                        pos = newPos;
                     }
                     else
                     {

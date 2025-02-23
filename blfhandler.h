@@ -20,6 +20,7 @@ enum
     BLF_CONTAINER = 10,
     BLF_CAN_DRV_ERR = 31, // can driver error
     BLF_CAN_DRV_SYNC = 44,
+    BLF_APP_TEXT = 65,
     BLF_ERROR_EXT = 73,
     BLF_DRV_ERR_EXT = 74,
     BLF_CAN_MSG2 = 86,
@@ -144,6 +145,59 @@ struct BLF_CANFD_OBJ
     uint8_t validDataBytes;
     uint8_t nonUseful[5];
     uint8_t data[64];
+};
+
+struct BLF_CANFD64_OBJ
+{
+    uint8_t getDlc() {
+        switch (dlc) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+            return dlc;
+        case 9:
+            return 12;
+        case 10:
+            return 16;
+        case 11:
+            return 20;
+        case 12:
+            return 24;
+        case 13:
+            return 32;
+        case 14:
+            return 48;
+        case 15:
+            return 64;
+        default:
+            break;
+        }
+        return 0;
+    }
+
+    uint8_t channel;
+    uint8_t dlc;
+    uint8_t validDataBytes;
+    uint8_t txCount {};
+    uint32_t id;
+    uint32_t frameLen;
+    uint8_t fdFlags;
+
+    uint32_t btrCfgArb {};
+    uint32_t btrCfgData {};
+    uint32_t timeOffsetBrsNs {};
+    uint32_t timeOffsetCrcDelNs {};
+    uint16_t bitCount;
+    uint8_t dir {};
+    uint8_t extDataOffset {};
+    uint32_t crc {};
+
+    //uint8_t data[64];
 };
 
 struct BLF_ERROR_EXT
