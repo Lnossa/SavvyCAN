@@ -1,5 +1,6 @@
 #Build directory
 build/
+release/
 
 # Compiled Object files
 *.slo
@@ -38,7 +39,7 @@ SavvyCAN
 **/qrc_*.cpp
 SavvyCAN.pro.user.*
 .qmake.stash
-Makefile
+Makefile*
 
 # Editor files
 *.code-workspace
@@ -46,3 +47,5 @@ SavvyCAN.pro.qtds
 .xcode
 SavvyCAN.xcodeproj
 .vscode
+
+.qtc_clangd
