@@ -1669,11 +1669,6 @@ bool FrameFileIO::isCanalyzerASC(QString filename)
             line = inFile->readLine();
             if (!line.contains("logged")) isMatch = false;
         }
-        if (!inFile->atEnd() && isMatch)
-        {
-            line = inFile->readLine();
-            if (!line.contains("version")) isMatch = false;
-        }
     }
     catch (...)
     {
@@ -2927,7 +2922,7 @@ bool FrameFileIO::isCANDOFile(QString filename)
             int ID = ((data[3] & 0x0F) * 256 + data[2]);
             int len = data[3] >> 4;
 
-            if (len <= 8 && ID <= 0x7FF)
+            if (len >= 0 && len <= 8 && ID <= 0x7FF)
             {
                 if (len < 8)
                 {
@@ -3306,7 +3301,7 @@ bool FrameFileIO::isTraceFile(QString filename)
                 else
                 {
                     QList<QByteArray> tokens = line.split('\t');
-                    if (tokens.length() > 3)
+                    if (tokens.length() > 4)
                     {
                         QList<QByteArray> timestampToks = tokens[1].split(':');
                         if (timestampToks.count() != 4) isMatch = false;
