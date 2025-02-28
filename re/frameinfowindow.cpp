@@ -385,8 +385,8 @@ void FrameInfoWindow::updateDetailsWindow(QString newID)
     QVector<double> timeGraphX, timeGraphY;
     QHash<QString, QHash<QString, int>> signalInstances;
     double maxY = -1000.0;
-    uint8_t changedBits[8];
-    uint8_t referenceBits[8];
+    uint8_t changedBits[64];
+    uint8_t referenceBits[64];
     uint8_t heatVals[512];
 
     //these two used by bitflip heatmap functionality
@@ -532,7 +532,7 @@ void FrameInfoWindow::updateDetailsWindow(QString newID)
             dataLen = frameCache.at(j).payload().length();
 
             byteGraphX.append(j);
-            for (int bytcnt = 0; bytcnt < dataLen; bytcnt++)
+            for (int bytcnt = 0; bytcnt < dataLen && bytcnt < 8; bytcnt++)
             {
                 byteGraphY[bytcnt].append(data[bytcnt]);
             }
@@ -555,7 +555,7 @@ void FrameInfoWindow::updateDetailsWindow(QString newID)
             thisLen = dataLen;
             if (thisLen > maxLen) maxLen = thisLen;
             if (thisLen < minLen) minLen = thisLen;
-            for (int c = 0; c < thisLen; c++)
+            for (int c = 0; c < thisLen && c < 8; c++)
             {
                 unsigned char dat = data[c];
                 if (minData[c] > dat) minData[c] = dat;
