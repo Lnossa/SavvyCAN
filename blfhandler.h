@@ -71,10 +71,10 @@ struct BLF_OBJ_HEADER_BASE
 //the next three are continuations of the above base and so are numbered in comments accordingly
 struct BLF_OBJ_HEADER_V1
 {
-    uint32_t flags; //16
+    uint32_t flags; // 1 = TimeTenMics. 2 = TimeOneNans
     uint16_t clientIdx; //20
     uint16_t objVer; //22
-    uint64_t uncompSize; //24 could be the timestamp too
+    uint64_t objTimeStamp; //24 could be the timestamp too
 }; //ends up as 32 bytes for this whole header including base
 
 struct BLF_OBJ_HEADER_V2
@@ -100,7 +100,7 @@ struct BLF_OBJ_HEADER
     union
     {
         BLF_OBJ_HEADER_V1 v1Obj;
-        BLF_OBJ_HEADER_V2 V2Obj;
+        BLF_OBJ_HEADER_V2 v2Obj;
         BLF_OBJ_HEADER_CONTAINER containerObj;
     };
 };

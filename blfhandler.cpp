@@ -5,6 +5,7 @@
 #include <QtEndian>
 
 #define BLF_REMOTE_FLAG 0x80
+#define BLF_CANFD64_REMOTE_FLAG 0x0010
 
 BLFHandler::BLFHandler()
 {
@@ -124,8 +125,9 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
                                 for (int i = 0; i < canObject.dlc; i++) bytes[i] = canObject.data[i];
                             }
                             frame.setPayload(bytes);
-                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
-                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+
+                            float timeStampDivisor = obj.header.v1Obj.flags == 1 ? 0.2 : 1000; //TODO: implement for v2 obj
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.objTimeStamp / timeStampDivisor));
                             frames->append(frame);
                         }
                         else if (obj.header.base.objType == BLF_CAN_MSG2)
@@ -145,8 +147,9 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
                                 for (int i = 0; i < canObject2.dlc; i++) bytes[i] = canObject2.data[i];
                             }
                             frame.setPayload(bytes);
-                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
-                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+
+                            float timeStampDivisor = obj.header.v1Obj.flags == 1 ? 0.2 : 1000; //TODO: implement for v2 obj
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.objTimeStamp / timeStampDivisor));
                             frames->append(frame);
                         }
                         else if (obj.header.base.objType == BLF_CAN_FD_MSG) {
@@ -166,8 +169,9 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
                                 for (int i = 0; i < canFdObject.dlc; i++) bytes[i] = canFdObject.data[i];
                             }
                             frame.setPayload(bytes);
-                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
-                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+
+                            float timeStampDivisor = obj.header.v1Obj.flags == 1 ? 0.2 : 1000; //TODO: implement for v2 obj
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.objTimeStamp / timeStampDivisor));
                             frames->append(frame);
                         }
                         else if(obj.header.base.objType == BLF_CAN_FD_MSG64) {
@@ -183,15 +187,16 @@ bool BLFHandler::loadBLF(QString filename, QVector<CANFrame>* frames)
 
                             uint8_t msgDlc = canFd64Object.getDlc();
                             QByteArray bytes(msgDlc, 0);
-                            if (canFd64Object.fdFlags & BLF_REMOTE_FLAG && false /* TODO: change this! */) {
+                            if (canFd64Object.fdFlags & BLF_CANFD64_REMOTE_FLAG) {
                                 frame.setFrameType(QCanBusFrame::RemoteRequestFrame);
                             } else {
                                 frame.setFrameType(QCanBusFrame::DataFrame);
                                 bytes = fileData.mid(sizeof(BLF_CANFD64_OBJ), msgDlc);
                             }
                             frame.setPayload(bytes);
-                            //Should we divide by a thousand or a million? Unsure here. It appears some logs are stamped in microseconds and some in milliseconds?
-                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.uncompSize / 1000.0)); //uncompsize field also used for timestamp oddly enough
+
+                            float timeStampDivisor = obj.header.v1Obj.flags == 1 ? 0.2 : 1000; //TODO: implement for v2 obj
+                            frame.setTimeStamp(QCanBusFrame::TimeStamp(0, obj.header.v1Obj.objTimeStamp / timeStampDivisor));
                             frames->append(frame);
                         }
                         else if (obj.header.base.objType == BLF_APP_TEXT) {
