@@ -574,22 +574,25 @@ void GVRetSerial::connectionTimeout()
 void GVRetSerial::readSerialData()
 {
     QByteArray data;
-    unsigned char c;
+    char c;
     QString debugBuild;
 
     if (serial) data = serial->readAll();
     if (tcpClient) data = tcpClient->readAll();
     if (udpClient) data = udpClient->readAll();
 
+    //qInfo() << "New message: " << data.toHex() << "len:" << data.length();
     sendDebug("Got data from serial. Len = " % QString::number(data.length()));
     for (int i = 0; i < data.length(); i++)
     {
+        //qInfo() << "Reading byte" << i;
         c = data.at(i);
         //qDebug() << c << "    " << QString::number(c, 16) << "     " << QString(c);
         debugBuild = debugBuild % QString::number(c, 16).rightJustified(2,'0') % " ";
         procRXChar(c);
     }
     debugOutput(debugBuild);
+    //qInfo() << "Done with message: " << data.toHex();
     //qDebug() << debugBuild;
 }
 
@@ -626,6 +629,7 @@ void GVRetSerial::procRXChar(unsigned char c)
             break;
         case 3: //process a return reply for analog inputs
             rx_state = GET_ANALOG_INPUTS;
+            qInfo() << "!!!!!!!!!!!!!GET_ANALOG_INPUTS";
             break;
         case 4: //we set digital outputs we don't accept replies so nothing here.
             rx_state = IDLE;
@@ -649,6 +653,7 @@ void GVRetSerial::procRXChar(unsigned char c)
         case 12:
             rx_state = GET_NUM_BUSES;
             qDebug() << "Got num buses reply";
+            qInfo() << "!!!!!!!!!!!!GET_NUM_BUSES";
             rx_step = 0;
             break;
         case 13:
@@ -664,6 +669,7 @@ void GVRetSerial::procRXChar(unsigned char c)
             rx_state = GET_FD_SETTINGS;
             rx_step = 0;
             qDebug() << "Got FD settings reply";
+            qInfo() << "!!!!!!!!!!!!!GET_FD_SETTINGS";
             break;
         }
         break;
@@ -753,6 +759,7 @@ void GVRetSerial::procRXChar(unsigned char c)
         rx_step++;
         break;
     case BUILD_FD_FRAME:
+        //qInfo() << "Building fd frame step:" << rx_step;
         switch (rx_step)
         {
         case 0:
@@ -794,18 +801,23 @@ void GVRetSerial::procRXChar(unsigned char c)
             buildFrame.setFrameId(buildId);
             break;
         case 8:
-            buildData.resize(c & 0x3F);
+            buildData.resize(c);
             break;
         case 9:
             buildFrame.bus = c;
             break;
         default:
-            if (rx_step < buildData.length() + 10)
+            qDebug() << "FD frame on byte" << rx_step;
+            //qInfo() << "Len: " << buildData.length() + 10;
+            if (rx_step < buildData.length() + 9)
             {
-                buildData[rx_step - 9] = c;
+                qDebug() << "Writing byte on idx " << rx_step - 10;
+                buildData[rx_step - 10] = c;
             }
             else
             {
+                buildData[rx_step - 10] = c;
+                qDebug() << "FD frame built";
                 rx_state = IDLE;
                 rx_step = 0;
                 buildFrame.isReceived = true;
@@ -824,7 +836,7 @@ void GVRetSerial::procRXChar(unsigned char c)
                         getQueue().queue();
                     }
                     else
-                        qDebug() << "can't get a frame, ERROR";
+                        qWarning() << "can't get a frame, ERROR";
 
                     //take the time the frame came in and try to resync the time base.
                     //if (continuousTimeSync) txTimestampBasis = QDateTime::currentMSecsSinceEpoch() - (buildFrame.timestamp / 1000);
@@ -1005,6 +1017,7 @@ void GVRetSerial::procRXChar(unsigned char c)
             }
         }
 
+        qInfo() << "!!!!!!!!!!!!Seding 0x0d!!!!!!";
         output.append((unsigned char)0xF1); //start a new command
         output.append((unsigned char)13); //get extended buses
         sendToSerial(output);
@@ -1106,8 +1119,9 @@ void GVRetSerial::handleTick()
 
     if( CANCon::CONNECTED == getStatus() )
     {
+
         if (doValidation) validationCounter--;
-        //qDebug() << validationCounter;
+
         if (validationCounter == 0 && doValidation)
         {
             if (serial == nullptr && tcpClient == nullptr) return;
@@ -1115,6 +1129,7 @@ void GVRetSerial::handleTick()
             {
                 sendDebug("Comm validation failed.");
 
+                qInfo() << "State on disconnect:" << rx_state;
                 setStatus(CANCon::NOT_CONNECTED);
                 //emit status(getStatus());
 
